@@ -4,6 +4,7 @@ import json
 import sys
 import select
 import time
+from enum import Enum
 
 # Constants
 SERVER = "127.0.1.1"  # Replace with your server IP
@@ -33,10 +34,22 @@ my_symbol = None
 num_clients = 0
 recv_buffer = ''
 
+
+# Game state
+class GameState(Enum):
+    MAIN_MENU = 1
+    SINGLE_PLAYER = 2
+    MULTIPLAYER = 3
+
+
+game_state = GameState.MAIN_MENU
+
+
 def draw_lines():
     for i in range(1, GRID_SIZE):
         pygame.draw.line(screen, LINE_COLOR, (0, HEIGHT // GRID_SIZE * i), (WIDTH, HEIGHT // GRID_SIZE * i), GRID_LINE_WIDTH)
         pygame.draw.line(screen, LINE_COLOR, (WIDTH // GRID_SIZE * i, 0), (WIDTH // GRID_SIZE * i, HEIGHT), GRID_LINE_WIDTH)
+
 
 def draw_symbols():
     for row in range(GRID_SIZE):
@@ -50,10 +63,12 @@ def draw_symbols():
             elif symbol == 'O':
                 pygame.draw.circle(screen, LINE_COLOR, (col * WIDTH // GRID_SIZE + WIDTH // 6, row * HEIGHT // GRID_SIZE + HEIGHT // 6), SYMBOL_SIZE, GRID_LINE_WIDTH)
 
+
 def draw_board():
     screen.fill(WHITE)
     draw_lines()
     draw_symbols()
+
 
 def draw_waiting_screen():
     screen.fill(WHITE)
@@ -61,12 +76,14 @@ def draw_waiting_screen():
     text = font.render("Waiting for another player...", True, LINE_COLOR)
     screen.blit(text, (WIDTH // 10, HEIGHT // 2))
 
+
 def send_move(row, col, symbol):
     move = {'row': row, 'col': col, 'symbol': symbol}
     try:
         client_socket.send(json.dumps(move).encode())
     except socket.error as e:
         print(f"Error sending move: {e}")
+
 
 def handle_events():
     for event in pygame.event.get():
@@ -78,6 +95,7 @@ def handle_events():
             row, col = y // (HEIGHT // GRID_SIZE), x // (WIDTH // GRID_SIZE)
             if board[row][col] == '':
                 send_move(row, col, player_turn)
+
 
 def receive_update():
     global board, player_turn, game_over, winner, waiting_for_player, my_symbol, recv_buffer, num_clients
@@ -113,6 +131,7 @@ def process_data(message):
     except json.JSONDecodeError as e:
         print(f"JSON decoding error: {e}")
 
+
 def handle_message(message):
     global waiting_for_player
     if 'Waiting for another player...' in message:
@@ -120,12 +139,14 @@ def handle_message(message):
     elif 'Both players are connected. Game starting...' in message:
         waiting_for_player = False
 
+
 def reset_game():
     global board, player_turn, game_over, winner
     board = [['' for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
     player_turn = 'X'
     game_over = False
     winner = None
+
 
 def handle_game_over():
     font = pygame.font.Font(None, 50)
@@ -142,18 +163,55 @@ def handle_game_over():
     reset_game()
     waiting_for_player = num_clients < 2
 
+
+def draw_main_menu():
+    screen.fill(WHITE)
+    font = pygame.font.Font(None, 50)
+    text = font.render("Tic-Tac-Toe", True, LINE_COLOR)
+    screen.blit(text, (WIDTH // 4, HEIGHT // 4))
+    single_player_text = font.render("1. Single Player", True, LINE_COLOR)
+    screen.blit(single_player_text, (WIDTH // 4, HEIGHT // 2))
+    multiplayer_text = font.render("2. Multiplayer", True, LINE_COLOR)
+    screen.blit(multiplayer_text, (WIDTH // 4, HEIGHT // 2 + 60))
+
+
+def handle_main_menu_events():
+    global game_state
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_1:
+                game_state = GameState.SINGLE_PLAYER
+            elif event.key == pygame.K_2:
+                game_state = GameState.MULTIPLAYER
+
+
+def handle_single_player_events():
+    pass
+
+
 def main():
-    global waiting_for_player, game_over
+    global waiting_for_player, game_over, game_state
     draw_board()
+
     while True:
-        handle_events()
-        if waiting_for_player:
-            draw_waiting_screen()
-        else:
+        if game_state == GameState.MAIN_MENU:
+            draw_main_menu()
+            handle_main_menu_events()
+        elif game_state == GameState.SINGLE_PLAYER:
             draw_board()
-        receive_update()
-        if game_over:
-            handle_game_over()
+            handle_single_player_events()
+        elif game_state == GameState.MULTIPLAYER:
+            handle_events()
+            if waiting_for_player:
+                draw_waiting_screen()
+            else:
+                draw_board()
+            receive_update()
+            if game_over:
+                handle_game_over()
         pygame.display.update()
 
 if __name__ == '__main__':
