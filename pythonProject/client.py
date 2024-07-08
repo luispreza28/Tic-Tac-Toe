@@ -34,6 +34,11 @@ my_symbol = None
 num_clients = 0
 recv_buffer = ''
 
+# Add music
+pygame.mixer.init()
+
+pygame.mixer.music.load('goofy_main_menu_music.mp3')
+pygame.mixer.music.play(loops=-1)
 
 # Game state
 class GameState(Enum):
