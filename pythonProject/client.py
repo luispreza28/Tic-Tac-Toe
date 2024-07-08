@@ -12,6 +12,7 @@ PORT = 5555
 WIDTH, HEIGHT = 600, 600
 WHITE = (255, 255, 255)
 LINE_COLOR = (0, 0, 0)
+TEXT_COLOR = (255,0,0) # RGB
 END_GAME_COLOR = (0, 0, 255)
 DELAY_BEFORE_RESET = 3
 GRID_SIZE = 3
@@ -35,9 +36,14 @@ my_symbol = None
 num_clients = 0
 recv_buffer = ''
 
-# Add music
+# Add main music
 pygame.mixer.music.load('goofy_main_menu_music.mp3')
 pygame.mixer.music.play(loops=-1)
+
+# Add background image for main menu
+background_image = pygame.image.load('main_menu_background.jpeg')
+background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))
+
 
 # Game state
 class GameState(Enum):
@@ -48,6 +54,11 @@ class GameState(Enum):
 
 game_state = GameState.MAIN_MENU
 
+
+# Add in game music
+def load_in_game_music():
+    pygame.mixer.music.load('in_game_music.mp3')
+    pygame.mixer.music.play(loops=-1)
 
 def draw_lines():
     for i in range(1, GRID_SIZE):
@@ -169,13 +180,14 @@ def handle_game_over():
 
 
 def draw_main_menu():
-    screen.fill(WHITE)
+    screen.blit(background_image, (0,0))
+
     font = pygame.font.Font(None, 50)
-    text = font.render("Tic-Tac-Toe", True, LINE_COLOR)
+    text = font.render("Tic-Tac-Toe", True, TEXT_COLOR)
     screen.blit(text, (WIDTH // 4, HEIGHT // 4))
-    single_player_text = font.render("1. Single Player", True, LINE_COLOR)
+    single_player_text = font.render("1. Single Player", True, TEXT_COLOR)
     screen.blit(single_player_text, (WIDTH // 4, HEIGHT // 2))
-    multiplayer_text = font.render("2. Multiplayer", True, LINE_COLOR)
+    multiplayer_text = font.render("2. Multiplayer", True, TEXT_COLOR)
     screen.blit(multiplayer_text, (WIDTH // 4, HEIGHT // 2 + 60))
 
 
@@ -188,9 +200,10 @@ def handle_main_menu_events():
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_1:
                 game_state = GameState.SINGLE_PLAYER
+                load_in_game_music()
             elif event.key == pygame.K_2:
                 game_state = GameState.MULTIPLAYER
-
+                load_in_game_music()
 
 def handle_single_player_events():
     pass
