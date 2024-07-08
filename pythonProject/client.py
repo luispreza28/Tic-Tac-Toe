@@ -21,6 +21,7 @@ SYMBOL_SIZE = WIDTH // 6 - 30
 
 # Initialize Pygame
 pygame.init()
+pygame.mixer.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Tic Tac Toe')
 
@@ -35,8 +36,6 @@ num_clients = 0
 recv_buffer = ''
 
 # Add music
-pygame.mixer.init()
-
 pygame.mixer.music.load('goofy_main_menu_music.mp3')
 pygame.mixer.music.play(loops=-1)
 
