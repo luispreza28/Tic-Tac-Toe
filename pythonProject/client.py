@@ -5,6 +5,7 @@ import sys
 import select
 import time
 from enum import Enum
+from ai_logic import AIEnemy
 
 # Constants
 SERVER = "127.0.1.1"  # Replace with your server IP
@@ -12,7 +13,7 @@ PORT = 5555
 WIDTH, HEIGHT = 600, 600
 WHITE = (255, 255, 255)
 LINE_COLOR = (0, 0, 0)
-TEXT_COLOR = (255,0,0) # RGB
+TEXT_COLOR = (150,255,0) # RGB
 END_GAME_COLOR = (0, 0, 255)
 DELAY_BEFORE_RESET = 3
 GRID_SIZE = 3
@@ -36,14 +37,21 @@ my_symbol = None
 num_clients = 0
 recv_buffer = ''
 
-# Add main music
-pygame.mixer.music.load('goofy_main_menu_music.mp3')
-pygame.mixer.music.play(loops=-1)
-
 # Add background image for main menu
 background_image = pygame.image.load('main_menu_background.jpeg')
 background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))
 
+# Add win screen
+win_screen_image = pygame.image.load('win_screen.jpg')
+win_screen_image = pygame.transform.scale(win_screen_image, (WIDTH, HEIGHT))
+
+# Add loss screen
+loss_screen_image = pygame.image.load('loss_screen.jpeg')
+loss_screen_image = pygame.transform.scale(loss_screen_image, (WIDTH, HEIGHT))
+
+# Add draw screen
+draw_screen_image = pygame.image.load('draw_screen.jpg')
+draw_screen_image = pygame.transform.scale(draw_screen_image, (WIDTH, HEIGHT))
 
 # Game state
 class GameState(Enum):
@@ -55,10 +63,20 @@ class GameState(Enum):
 game_state = GameState.MAIN_MENU
 
 
+# Initialize enemy
+ai_enemy = AIEnemy('0')
+
+
 # Add in game music
 def load_in_game_music():
     pygame.mixer.music.load('in_game_music.mp3')
     pygame.mixer.music.play(loops=-1)
+
+
+def load_main_menu_music():
+    pygame.mixer.music.load('goofy_main_menu_music.mp3')
+    pygame.mixer.music.play(loops=-1)
+
 
 def draw_lines():
     for i in range(1, GRID_SIZE):
@@ -101,6 +119,7 @@ def send_move(row, col, symbol):
 
 
 def handle_events():
+    global game_state
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -110,6 +129,10 @@ def handle_events():
             row, col = y // (HEIGHT // GRID_SIZE), x // (WIDTH // GRID_SIZE)
             if board[row][col] == '':
                 send_move(row, col, player_turn)
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                game_state = GameState.MAIN_MENU
+                load_main_menu_music()
 
 
 def receive_update():
@@ -165,13 +188,16 @@ def reset_game():
 
 def handle_game_over():
     font = pygame.font.Font(None, 50)
-    screen.fill(WHITE)
+    print(my_symbol)
     if winner == 'Draw':
         text = font.render("No contest!", True, END_GAME_COLOR)
+        screen.blit(draw_screen_image, (0,0))
     elif my_symbol == winner:
         text = font.render(f"YOU WON!", True, END_GAME_COLOR)
+        screen.blit(win_screen_image, (0,0))
     else:
         text = font.render(f"YOU LOST!", True, END_GAME_COLOR)
+        screen.blit(loss_screen_image, (0,0))
     screen.blit(text, (WIDTH // 4, HEIGHT // 2))
     pygame.display.update()
     time.sleep(DELAY_BEFORE_RESET)
@@ -206,12 +232,68 @@ def handle_main_menu_events():
                 load_in_game_music()
 
 def handle_single_player_events():
-    pass
+    global ai_enemy, player_turn, game_over, winner, my_symbol, game_state
+    my_symbol = 'X'
+    if player_turn == 'O' and not game_over:
+        move = ai_enemy.make_move(board)
+        if move:
+            row, col = move
+            board[row][col] = 'O'
+            send_move(row, col, 'O')
+            player_turn = 'X'
+            winner = check_winner(board)
+            if winner:
+                game_over = True
+
+    for event in pygame.event.get():
+        if event == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+        elif event.type == pygame.MOUSEBUTTONDOWN and not game_over and player_turn == 'X':
+            x, y = pygame.mouse.get_pos()
+            row, col = y // (HEIGHT // GRID_SIZE), x // (WIDTH // GRID_SIZE)
+            if board[row][col] == '':
+                board[row][col] = 'X'
+                player_turn = 'O'
+                winner = check_winner(board)
+                if winner:
+                    game_over = True
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                game_state = GameState.MAIN_MENU
+                load_main_menu_music()
+
+# Check if game is over
+def check_winner(board):
+    # Check for row
+    for row in board:
+        if row[0] == row[1] == row[2] != '':
+            return row[0]
+
+    # Check for col
+    for col in range(3):
+        if board[0][col] == board[1][col] == board[2][col] != '':
+            return board[0][col]
+
+    # Check for diagonal
+    if board[0][0] == board[1][1] == board[2][2] != '':
+        return board[0][0]
+    elif board[0][2] == board[1][1] == board[2][0] != '':
+        return board[0][0]
+
+    # Check for tie
+    is_tie = all(cell != '' for row in board for cell in row)
+    if is_tie:
+        return 'Draw'
+
+    # No winner yet
+    return None
 
 
 def main():
     global waiting_for_player, game_over, game_state
     draw_board()
+    load_main_menu_music()
 
     while True:
         if game_state == GameState.MAIN_MENU:
@@ -220,6 +302,8 @@ def main():
         elif game_state == GameState.SINGLE_PLAYER:
             draw_board()
             handle_single_player_events()
+            if game_over:
+                handle_game_over()
         elif game_state == GameState.MULTIPLAYER:
             handle_events()
             if waiting_for_player:
