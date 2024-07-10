@@ -13,7 +13,7 @@ PORT = 5555
 WIDTH, HEIGHT = 600, 600
 WHITE = (255, 255, 255)
 LINE_COLOR = (0, 0, 0)
-TEXT_COLOR = (150,255,0) # RGB
+TEXT_COLOR = (255, 0, 0) # RGB
 END_GAME_COLOR = (0, 0, 255)
 DELAY_BEFORE_RESET = 3
 GRID_SIZE = 3
@@ -38,7 +38,7 @@ num_clients = 0
 recv_buffer = ''
 
 # Add background image for main menu
-background_image = pygame.image.load('main_menu_background.jpeg')
+background_image = pygame.image.load('main_menu_background3.jpeg')
 background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))
 
 # Add win screen
