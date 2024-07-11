@@ -235,7 +235,12 @@ def handle_single_player_events():
     global ai_enemy, player_turn, game_over, winner, my_symbol, game_state
     my_symbol = 'X'
     if player_turn == 'O' and not game_over:
+        # Expert ai
+        # move = ai_enemy.find_best_move(board)
+
+        # Easy ai
         move = ai_enemy.make_move(board)
+
         if move:
             row, col = move
             board[row][col] = 'O'
